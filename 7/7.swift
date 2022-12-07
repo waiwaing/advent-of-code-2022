@@ -4,13 +4,9 @@ extension String: Error {}
 extension Int { init?(substring: Substring) { self.init(String(substring)) } }
 extension Dictionary {
     mutating func getOrSet(_ key: Key, _ value: () -> Value) -> Value {
-        if self[key] == nil {
-            self[key] = value()
-        }
-
+        if self[key] == nil { self[key] = value() }
         return self[key]!
     }
-
 }
 
 let input = try String(decoding: FileHandle(forReadingAtPath: "input.txt")!.readToEnd()!, as: UTF8.self)
@@ -20,12 +16,10 @@ class Directory {
     var parent: Directory? = nil
 
     var totalSize: Int {
-        contents.values.map { v -> Int in
-            switch v {
-                case .directory(let directory): return directory.totalSize
-                case .file(let file): return file.size
-            }
-        }.reduce(0, +)
+        contents.values.map { switch $0 {
+            case .directory(let directory): return directory.totalSize
+            case .file(let file): return file.size
+        }}.reduce(0, +)
     }
 }
 
@@ -40,9 +34,8 @@ let root = Directory()
 var currentDirectory = root
 
 func tryCreateDirectory(parent: Directory, name: String) -> Directory {
-    guard case .directory(let directory) = (parent.contents.getOrSet(name, {
-        .directory(Directory()) 
-    })) else { fatalError("Directory is not directory") }
+    guard case .directory(let directory) = (parent.contents.getOrSet(name, { .directory(Directory()) })) 
+        else { fatalError("Directory is not directory") }
 
     directory.parent = parent
     return directory
@@ -71,36 +64,24 @@ var answer = 0
 
 while !stack.isEmpty {
     let current = stack.removeFirst()
-    stack.append(contentsOf: current.contents.values.filter { 
-        switch($0) { case .directory: return true; case .file: return false }
-    }.map { x -> Directory in 
-        guard case .directory(let directory) = x else { fatalError("Still not a directory") }
-        return directory
-    }) 
+    stack.append(contentsOf: current.contents.values.compactMap { x -> Directory? in
+        if case .directory(let directory) = x {return directory} else {return nil}
+    })
 
     answer += current.totalSize < 100000 ? current.totalSize : 0
 }
 
 print(answer)
 
-var totalDiskSpace = 70000000
-var neededUnusedDiskSpace = 30000000
-var currentUsedDiskUsage = root.totalSize
-var currentUnusedDiskSpace = totalDiskSpace - currentUsedDiskUsage
-
-var minimumToDelete = neededUnusedDiskSpace - currentUnusedDiskSpace
-
+var minimumToDelete = root.totalSize - 40000000
 stack = [root]
-answer = totalDiskSpace
+answer = 70000000
 
 while !stack.isEmpty {
     let current = stack.removeFirst()
-    stack.append(contentsOf: current.contents.values.filter { 
-        switch($0) { case .directory: return true; case .file: return false }
-    }.map { x -> Directory in 
-        guard case .directory(let directory) = x else { fatalError("Still not a directory") }
-        return directory
-    }) 
+    stack.append(contentsOf: current.contents.values.compactMap { x -> Directory? in
+        if case .directory(let directory) = x {return directory} else {return nil}
+    })
 
     if (current.totalSize >= minimumToDelete && current.totalSize < answer) {
         answer = current.totalSize
